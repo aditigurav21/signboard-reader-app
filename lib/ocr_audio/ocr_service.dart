@@ -1,5 +1,6 @@
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'dart:io';
+import '../ai/sign_filter.dart';
 
 class OCRService {
   final TextRecognizer textRecognizer = TextRecognizer();
@@ -10,13 +11,20 @@ class OCRService {
     final RecognizedText recognizedText =
     await textRecognizer.processImage(inputImage);
 
-    String result = "";
+    List<String> filteredResults = [];
 
     for (TextBlock block in recognizedText.blocks) {
-      result += block.text + "\n";
+
+      String blockText = block.text;
+
+      List<String> filtered =
+      SignFilter.filterText(blockText);
+
+      filteredResults.addAll(filtered);
+
     }
 
-    return result;
+    return filteredResults.join("\n");
   }
 
   void dispose() {
