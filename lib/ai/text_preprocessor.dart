@@ -1,6 +1,6 @@
 class TextPreprocessor {
 
-  static String clean(String text) {
+  static String cleanText(String text) {
 
     text = text.toLowerCase();
 

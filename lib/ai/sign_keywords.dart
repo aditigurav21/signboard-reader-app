@@ -1,32 +1,51 @@
-const Map<String, List<String>> signKeywords = {
-
-  "warning": [
-    "enter",
-    "stop",
-    "no entry",
-    "danger",
-    "caution",
-    "yield"
-  ],
+Map<String, List<String>> signKeywords = {
 
   "signal": [
+    "stop",
+    "go",
+    "yield",
+    "no entry",
     "turn left",
     "turn right",
-    "speed limit"
+    "u turn",
   ],
 
-  "information": [
+  "warning": [
+    "danger",
+    "caution",
+    "slow",
+    "road work",
+    "construction",
+    "detour",
+    "slippery",
+    "bump",
+  ],
+
+  "public_service": [
     "hospital",
-    "parking",
     "school",
-    "bus stop"
+    "police",
+    "parking",
+    "bus stop",
+    "railway station",
+    "airport",
   ],
 
-  "noise": [
-    "sale",
-    "discount",
-    "restaurant",
-    "shop"
-  ]
+  "emergency": [
+    "exit",
+    "emergency exit",
+    "fire",
+    "fire extinguisher",
+    "high voltage",
+    "no smoking",
+  ],
+
+  "navigation": [
+    "left",
+    "right",
+    "ahead",
+    "straight",
+    "platform",
+  ],
 
 };

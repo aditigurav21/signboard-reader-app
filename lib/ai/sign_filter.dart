@@ -1,21 +1,56 @@
 import 'text_preprocessor.dart';
 import 'sign_keywords.dart';
+import 'tfidf_vectorizer.dart';
+import 'logistic_classifier.dart';
 
 class SignFilter {
 
-  static List<String> filterText(String text) {
+  static List<String> filterText(
+      String text,
+      TFIDFVectorizer vectorizer,
+      LogisticClassifier classifier) {
 
-    text = TextPreprocessor.clean(text);
+    text = TextPreprocessor.cleanText(text);
 
     List<String> results = [];
 
-    for (var category in signKeywords.keys) {
+    List<String> lines = text.split("\n");
 
-      for (var keyword in signKeywords[category]!) {
+    for (var line in lines) {
 
-        if (text.contains(keyword)) {
-          results.add(keyword);
+      // 1️⃣ KEYWORD CHECK FIRST
+      bool keywordFound = false;
+
+      for (var category in signKeywords.keys) {
+
+        for (var keyword in signKeywords[category]!) {
+
+          if (line.contains(keyword)) {
+
+            results.add(line);
+            keywordFound = true;
+            break;
+
+          }
+
         }
+
+        if (keywordFound) break;
+
+      }
+
+      // If keyword found skip ML
+      if (keywordFound) continue;
+
+      // 2️⃣ USE ML MODEL
+
+      List<double> vector = vectorizer.transform(line);
+
+      double probability = classifier.predict(vector);
+
+      if (probability > 0.75) {
+
+        results.add(line);
 
       }
 
