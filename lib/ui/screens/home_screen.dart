@@ -1,10 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../ocr_audio/ocr_service.dart';
 import '../widgets/custom_button.dart';
 import 'result_screen.dart';
 
@@ -17,13 +16,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   File? _image;
-  String? _destination;    //Stores destination 
+  String? _destination;
   bool _loading = false;
 
   // 🎤 Voice Assistant
   late stt.SpeechToText _speech;
   bool _isListening = false;
   String _voiceText = "";
+
+  // 🧠 OCR Service
+  final OCRService _ocrService = OCRService();
 
   final ImagePicker _picker = ImagePicker();
 
@@ -69,25 +71,21 @@ class _HomeScreenState extends State<HomeScreen> {
       _destination = "hospital";
     }
 
-  
-    //actions
+    // Actions
     if (command.contains("read")) {
       _detectText();
-    } 
-    else if (command.contains("camera")) {
+    } else if (command.contains("camera")) {
       _pickImage(ImageSource.camera);
-    } 
-    else if (command.contains("gallery")) {
+    } else if (command.contains("gallery")) {
       _pickImage(ImageSource.gallery);
-    } 
-    else {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Command not recognized")),
       );
     }
   }
 
-  // 📷 Pick image (camera or gallery)
+  // 📷 Pick image
   Future<void> _pickImage(ImageSource source) async {
     final pickedFile = await _picker.pickImage(
       source: source,
@@ -101,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // 🚀 Send to backend
+  // 🔍 Detect Text
   Future<void> _detectText() async {
     if (_image == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,41 +110,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() => _loading = true);
 
-    var request = http.MultipartRequest(
-      "POST",
-      Uri.parse("http://10.151.163.48:5000/upload"),
-    );
-
-    request.files.add(
-      await http.MultipartFile.fromPath("image", _image!.path),
-    );
-
     try {
-      var response = await request.send();
-      var respStr = await response.stream.bytesToString();
-      var data = json.decode(respStr);
-
-      String detectedText = data["detectedText"] ?? "";
+      String detectedText =
+          await _ocrService.extractText(_image!.path);
 
       String direction = getDirection(detectedText);
 
       if (_destination != null && direction != "unknown") {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${_destination!.toUpperCase()} is on your $direction"),
+            content: Text(
+              "${_destination!.toUpperCase()} is on your $direction",
+            ),
           ),
         );
       }
 
       setState(() => _loading = false);
+      if (!mounted) return;
 
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ResultScreen(
             image: _image!,
-            detectedText: data["detectedText"] ?? "",
-            translatedText: data["translatedText"] ?? "",
+            detectedText: detectedText,
+            translatedText: "",
           ),
         ),
       );
@@ -159,23 +148,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // 📍 Direction Logic
   String getDirection(String text) {
-  text = text.toLowerCase();
+    text = text.toLowerCase();
 
-  if (_destination != null && text.contains(_destination!)) {
-    if (text.contains("→") || text.contains("right")) {
-      return "right";
-    } 
-    else if (text.contains("←") || text.contains("left")) {
-      return "left";
-    } 
-    else if (text.contains("↑") || text.contains("straight")) {
-      return "straight";
+    if (_destination != null && text.contains(_destination!)) {
+      if (text.contains("→") || text.contains("right")) {
+        return "right";
+      } else if (text.contains("←") || text.contains("left")) {
+        return "left";
+      } else if (text.contains("↑") || text.contains("straight")) {
+        return "straight";
+      }
     }
-  }
 
-  return "unknown";
-}
+    return "unknown";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -184,51 +172,62 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Center(
         child: _loading
             ? const CircularProgressIndicator()
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _image != null
-                      ? Image.file(_image!, width: 300)
-                      : const Text("No image selected"),
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _image != null
+                        ? Image.file(_image!, width: 300)
+                        : const Text("No image selected"),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  // 🎤 Voice Button
-                  CustomButton(
-                    text: _isListening ? "Listening..." : "Start Voice",
-                    onPressed:
-                        _isListening ? _stopListening : _startListening,
-                  ),
+                    // 🎤 Voice Button
+                    CustomButton(
+                      text: _isListening ? "Listening..." : "Start Voice",
+                      onPressed:
+                          _isListening ? _stopListening : _startListening,
+                    ),
 
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                  CustomButton(
-                    text: "Pick from Gallery",
-                    onPressed: () => _pickImage(ImageSource.gallery),
-                  ),
+                    CustomButton(
+                      text: "Pick from Gallery",
+                      onPressed: () =>
+                          _pickImage(ImageSource.gallery),
+                    ),
 
-                  CustomButton(
-                    text: "Capture from Camera",
-                    onPressed: () => _pickImage(ImageSource.camera),
-                  ),
+                    CustomButton(
+                      text: "Capture from Camera",
+                      onPressed: () =>
+                          _pickImage(ImageSource.camera),
+                    ),
 
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                  CustomButton(
-                    text: "Detect Text",
-                    onPressed: _detectText,
-                  ),
+                    CustomButton(
+                      text: "Detect Text",
+                      onPressed: _detectText,
+                    ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  // 👀 Show spoken text (for debugging)
-                  Text(
-                    "You said: $_voiceText",
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                    // 👀 Debug text
+                    Text(
+                      "You said: $_voiceText",
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _speech.stop();
+    _ocrService.dispose();
+    super.dispose();
   }
 }
