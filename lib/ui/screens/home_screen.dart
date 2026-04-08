@@ -2,8 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-
+import 'package:http/http.dart' as http;
 import '../../ocr_audio/ocr_service.dart';
+import '../../haptics/haptic_service.dart';
 import '../widgets/custom_button.dart';
 import 'result_screen.dart';
 
@@ -93,6 +94,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (pickedFile != null) {
+      HapticService.light(); // ✅ Image selected feedback
+
       setState(() {
         _image = File(pickedFile.path);
       });
@@ -102,6 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // 🔍 Detect Text
   Future<void> _detectText() async {
     if (_image == null) {
+      HapticService.heavy(); // ✅ Error feedback
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select an image first")),
       );
@@ -109,38 +114,52 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     setState(() => _loading = true);
+    HapticService.medium(); // ✅ Processing start feedback
 
-    try {
-      String detectedText =
-          await _ocrService.extractText(_image!.path);
+    var request = http.MultipartRequest(
+      "POST",
+      Uri.parse("http://10.151.163.254:5000/upload"),
+    );
 
-      String direction = getDirection(detectedText);
-
-      if (_destination != null && direction != "unknown") {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "${_destination!.toUpperCase()} is on your $direction",
-            ),
-          ),
-        );
-      }
-
-      setState(() => _loading = false);
+    request.files.add(
+      await http.MultipartFile.fromPath("image", _image!.path),
+    );
+try {
+  String detectedText =
+      await _ocrService.extractText(_image!.path);
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ResultScreen(
-            image: _image!,
-            detectedText: detectedText,
-            translatedText: "",
-          ),
+ 
+
+  String direction = getDirection(detectedText);
+
+  if (_destination != null && direction != "unknown") {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "${_destination!.toUpperCase()} is on your $direction",
         ),
-      );
-    } catch (e) {
+      ),
+    );
+  }
+
+  setState(() => _loading = false);
+
+  HapticService.medium();
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ResultScreen(
+        image: _image!,
+        detectedText: detectedText,
+        translatedText: "",
+      ),
+    ),
+  );
+} catch (e) {
       setState(() => _loading = false);
+      HapticService.heavy(); // ✅ Error feedback
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
