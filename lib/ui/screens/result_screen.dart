@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-
+import '../../haptics/haptic_service.dart'; 
 class ResultScreen extends StatelessWidget {
   final File image;
   final String detectedText;
@@ -15,6 +15,7 @@ class ResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+     HapticService.medium(); // ✅ ADD THIS (screen open feedback)
     return Scaffold(
       appBar: AppBar(title: const Text("Result")),
       body: Center(
