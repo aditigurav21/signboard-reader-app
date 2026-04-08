@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../../haptics/haptic_service.dart';
 class CustomButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
@@ -13,7 +13,10 @@ class CustomButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         textStyle: const TextStyle(fontSize: 18),
       ),
-      onPressed: onPressed,
+      onPressed: (){
+        HapticService.light(); // ✅ ADD THIS (button click feedback)
+        onPressed(); // ✅ KEEP original functionality
+      },
       child: Text(text),
     );
   }
